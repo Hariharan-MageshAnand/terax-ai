@@ -58,6 +58,8 @@ export type Preferences = {
   terminalWebglEnabled: boolean;
   terminalFontSize: number;
   shortcuts: Record<ShortcutId, KeyBinding[]>;
+  /** Fish-style terminal line autocomplete (history + static commands). */
+  terminalAutocompleteEnabled: boolean;
 };
 
 const STORE_PATH = "terax-settings.json";
@@ -80,6 +82,7 @@ const KEY_VIM_MODE = "vimMode";
 const KEY_TERMINAL_WEBGL_ENABLED = "terminalWebglEnabled";
 const KEY_TERMINAL_FONT_SIZE = "terminalFontSize";
 const KEY_SHORTCUTS = "shortcuts";
+const KEY_TERMINAL_AUTOCOMPLETE = "terminalAutocompleteEnabled";
 
 export const TERMINAL_FONT_SIZE_DEFAULT = 14;
 export const TERMINAL_FONT_SIZE_MIN = 8;
@@ -109,6 +112,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   terminalWebglEnabled: true,
   terminalFontSize: TERMINAL_FONT_SIZE_DEFAULT,
   shortcuts: {} as Record<ShortcutId, KeyBinding[]>,
+  terminalAutocompleteEnabled: false,
 };
 
 const store = new LazyStore(STORE_PATH, { defaults: {}, autoSave: 200 });
@@ -178,6 +182,9 @@ export async function loadPreferences(): Promise<Preferences> {
     shortcuts:
       get<Record<ShortcutId, KeyBinding[]>>(KEY_SHORTCUTS) ??
       DEFAULT_PREFERENCES.shortcuts,
+    terminalAutocompleteEnabled:
+      get<boolean>(KEY_TERMINAL_AUTOCOMPLETE) ??
+      DEFAULT_PREFERENCES.terminalAutocompleteEnabled,
   };
 }
 
@@ -273,6 +280,12 @@ export async function resetShortcuts(): Promise<void> {
   await store.save();
 }
 
+export async function setTerminalAutocompleteEnabled(
+  value: boolean,
+): Promise<void> {
+  await writePref(KEY_TERMINAL_AUTOCOMPLETE, value);
+}
+
 export type PrefKey = keyof Preferences;
 
 /** Subscribe to changes from any window (settings → main). */
@@ -299,6 +312,7 @@ export async function onPreferencesChange(
     [KEY_TERMINAL_WEBGL_ENABLED]: "terminalWebglEnabled",
     [KEY_TERMINAL_FONT_SIZE]: "terminalFontSize",
     [KEY_SHORTCUTS]: "shortcuts",
+    [KEY_TERMINAL_AUTOCOMPLETE]: "terminalAutocompleteEnabled",
   };
   // Same-process writes still fire onChange immediately; cross-window writes
   // arrive via the Tauri event emitted by writePref().
