@@ -13,6 +13,8 @@ import {
   FolderAddIcon,
   Refresh01Icon,
   Search01Icon,
+  ViewIcon,
+  ViewOffSlashIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -22,6 +24,7 @@ import { InlineInput } from "./InlineInput";
 import { copyToClipboard, revealInFinder } from "./lib/contextActions";
 import { fileIconUrl, folderIconUrl } from "./lib/iconResolver";
 import { COMPACT_CONTENT, COMPACT_ITEM } from "./lib/menuItemClass";
+import { useExplorerPrefsStore } from "./explorerPrefsStore";
 import { useFileTree } from "./lib/useFileTree";
 import { useGlobalShortcuts } from "@/modules/shortcuts";
 
@@ -47,7 +50,13 @@ export function FileExplorer({
   onRevealInTerminal,
   onAttachToAgent,
 }: Props) {
-  const tree = useFileTree(rootPath, { onPathRenamed, onPathDeleted });
+  const showHidden = useExplorerPrefsStore((s) => s.showHidden);
+  const toggleShowHidden = useExplorerPrefsStore((s) => s.toggleShowHidden);
+  const tree = useFileTree(rootPath, {
+    showHidden,
+    onPathRenamed,
+    onPathDeleted,
+  });
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isSearchActive, setIsSearchActive] = useState(false);
@@ -214,6 +223,30 @@ export function FileExplorer({
         <Button
           variant="ghost"
           size="icon"
+          className={`size-6 hover:text-foreground ${
+            showHidden
+              ? "text-foreground"
+              : "text-muted-foreground"
+          }`}
+          onClick={() => toggleShowHidden()}
+          title={
+            showHidden ? "Hide hidden files" : "Show hidden files"
+          }
+          aria-label={
+            showHidden ? "Hide hidden files" : "Show hidden files"
+          }
+          aria-pressed={showHidden}
+        >
+          <HugeiconsIcon
+            icon={showHidden ? ViewOffSlashIcon : ViewIcon}
+            size={13}
+            strokeWidth={2}
+          />
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="icon"
           className="size-6 text-muted-foreground hover:text-foreground"
           onClick={() => tree.beginCreate(rootPath, "file")}
           title="New file"
@@ -243,6 +276,7 @@ export function FileExplorer({
       <ExplorerSearch
         ref={searchRef}
         rootPath={rootPath}
+        showHidden={showHidden}
         onOpenFile={onOpenFile}
         open={isSearchOpen}
         onRequestClose={() => setIsSearchOpen(false)}

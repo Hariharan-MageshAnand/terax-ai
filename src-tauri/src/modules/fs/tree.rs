@@ -21,10 +21,14 @@ pub struct DirEntry {
 }
 
 /// Lists immediate children of `path`. Dirs first, then files, each sorted
-/// case-insensitively. Hidden (dot-prefix) entries are filtered — UI may add
-/// a "show hidden" toggle later.
+/// case-insensitively. Dot-prefix entries are omitted unless `show_hidden` is
+/// true (default false).
 #[tauri::command]
-pub fn fs_read_dir(path: String) -> Result<Vec<DirEntry>, String> {
+pub fn fs_read_dir(
+    path: String,
+    show_hidden: Option<bool>,
+) -> Result<Vec<DirEntry>, String> {
+    let show_hidden = show_hidden.unwrap_or(false);
     let root = PathBuf::from(&path);
     let read = std::fs::read_dir(&root).map_err(|e| {
         log::debug!("fs_read_dir({}) failed: {e}", root.display());
@@ -35,7 +39,7 @@ pub fn fs_read_dir(path: String) -> Result<Vec<DirEntry>, String> {
         .filter_map(Result::ok)
         .filter_map(|entry| {
             let name = entry.file_name().into_string().ok()?;
-            if name.starts_with('.') {
+            if !show_hidden && name.starts_with('.') {
                 return None;
             }
 
@@ -91,9 +95,13 @@ pub fn fs_read_dir(path: String) -> Result<Vec<DirEntry>, String> {
 /// Lists immediate subdirectories of `path`. Kept for the CwdBreadcrumb.
 ///
 /// Symlinks to directories are included (matches shell `cd` semantics).
-/// Hidden entries are filtered by dot-prefix only.
+/// Dot-prefix dirs are omitted unless `show_hidden` is true.
 #[tauri::command]
-pub fn list_subdirs(path: String) -> Result<Vec<String>, String> {
+pub fn list_subdirs(
+    path: String,
+    show_hidden: Option<bool>,
+) -> Result<Vec<String>, String> {
+    let show_hidden = show_hidden.unwrap_or(false);
     let root = PathBuf::from(&path);
     let read = std::fs::read_dir(&root).map_err(|e| {
         log::debug!("list_subdirs({}) read_dir failed: {e}", root.display());
@@ -110,7 +118,7 @@ pub fn list_subdirs(path: String) -> Result<Vec<String>, String> {
             _ => false,
         })
         .filter_map(|entry| entry.file_name().into_string().ok())
-        .filter(|name| !name.starts_with('.'))
+        .filter(|name| show_hidden || !name.starts_with('.'))
         .collect();
 
     dirs.sort_by_key(|a| a.to_lowercase());

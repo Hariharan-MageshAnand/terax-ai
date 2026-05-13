@@ -26,6 +26,7 @@ type SearchHit = {
 
 type Props = {
   rootPath: string;
+  showHidden?: boolean;
   onOpenFile: (path: string) => void;
   open: boolean;
   onRequestClose: () => void;
@@ -39,6 +40,7 @@ export type ExplorerSearchHandle = {
 
 export const ExplorerSearch = forwardRef<ExplorerSearchHandle, Props>(function ExplorerSearch({
   rootPath,
+  showHidden = false,
   onOpenFile,
   open,
   onRequestClose,
@@ -82,6 +84,7 @@ export const ExplorerSearch = forwardRef<ExplorerSearchHandle, Props>(function E
           root: rootPath,
           query: q,
           limit: 200,
+          showHidden,
         });
         if (alive) setResults(hits);
       } catch (e) {
@@ -98,7 +101,7 @@ export const ExplorerSearch = forwardRef<ExplorerSearchHandle, Props>(function E
       alive = false;
       clearTimeout(handle);
     };
-  }, [query, rootPath]);
+  }, [query, rootPath, showHidden]);
 
   useImperativeHandle(
     ref,

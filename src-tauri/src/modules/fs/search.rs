@@ -16,16 +16,19 @@ pub struct SearchHit {
     pub is_dir: bool,
 }
 
-/// Walks `root` honoring `.gitignore` / `.ignore` / hidden rules and returns
-/// entries whose path contains `query` (case-insensitive substring on the
-/// path relative to root). Returns up to `limit` hits. An empty query returns
-/// nothing — callers should short-circuit before invoking.
+/// Walks `root` honoring `.gitignore` / `.ignore` and returns entries whose
+/// path contains `query` (case-insensitive substring on the path relative to
+/// root). Dot-path segments are skipped unless `show_hidden` is true. Returns
+/// up to `limit` hits. An empty query returns nothing — callers should
+/// short-circuit before invoking.
 #[tauri::command]
 pub fn fs_search(
     root: String,
     query: String,
     limit: Option<usize>,
+    show_hidden: Option<bool>,
 ) -> Result<Vec<SearchHit>, String> {
+    let show_hidden = show_hidden.unwrap_or(false);
     let q = query.trim().to_lowercase();
     if q.is_empty() {
         return Ok(Vec::new());
@@ -39,7 +42,7 @@ pub fn fs_search(
     let mut out: Vec<SearchHit> = Vec::with_capacity(cap.min(64));
 
     let walker = WalkBuilder::new(&root_path)
-        .hidden(true)
+        .hidden(!show_hidden)
         .git_ignore(true)
         .git_global(true)
         .git_exclude(true)

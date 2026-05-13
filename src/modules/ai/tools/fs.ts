@@ -50,18 +50,22 @@ export function buildFsTools(ctx: ToolContext) {
 
     list_directory: tool({
       description:
-        "List immediate entries (files + directories) in a directory. Hidden entries are omitted.",
+        "List immediate entries (files + directories) in a directory. By default dot-prefixed names are omitted; set include_hidden true to list them (subject to the same path safety checks).",
       inputSchema: z.object({
         path: z
           .string()
           .describe("Absolute path, or relative to the active terminal cwd."),
+        include_hidden: z
+          .boolean()
+          .optional()
+          .describe("When true, include dot-prefixed entries."),
       }),
-      execute: async ({ path }) => {
+      execute: async ({ path, include_hidden }) => {
         const abs = resolvePath(path, ctx.getCwd());
         const safety = checkReadable(abs);
         if (!safety.ok) return { error: safety.reason, path: abs };
         try {
-          const entries = await native.readDir(abs);
+          const entries = await native.readDir(abs, include_hidden === true);
           return {
             path: abs,
             entries: entries.map((e) => ({ name: e.name, kind: e.kind })),

@@ -20,6 +20,7 @@ import {
   MoreHorizontalIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
+import { useExplorerPrefsStore } from "@/modules/explorer/explorerPrefsStore";
 import { invoke } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useState } from "react";
 import { segmentsFromCwd } from "./lib/pathUtils";
@@ -177,6 +178,7 @@ function CurrentSegmentDropdown({
   path: string;
   onCd: (p: string) => void;
 }) {
+  const showHidden = useExplorerPrefsStore((s) => s.showHidden);
   const [open, setOpen] = useState(false);
   const [children, setChildren] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -184,13 +186,16 @@ function CurrentSegmentDropdown({
   const load = useCallback(async () => {
     setError(null);
     try {
-      const dirs = await invoke<string[]>("list_subdirs", { path });
+      const dirs = await invoke<string[]>("list_subdirs", {
+        path,
+        showHidden,
+      });
       setChildren(dirs);
     } catch (e) {
       setError(String(e));
       setChildren([]);
     }
-  }, [path]);
+  }, [path, showHidden]);
 
   useEffect(() => {
     if (open) load();
@@ -264,7 +269,7 @@ function CollapsedSegments({
           <DropdownMenuTrigger asChild>
             <button
               type="button"
-              title="Show hidden folders"
+              title="More path segments"
               className="flex items-center rounded-sm px-1 text-muted-foreground hover:bg-accent hover:text-foreground"
             >
               <HugeiconsIcon

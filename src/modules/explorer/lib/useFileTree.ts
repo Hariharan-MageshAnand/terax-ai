@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export type DirEntry = {
   name: string;
@@ -33,11 +33,13 @@ export function dirname(path: string): string {
 }
 
 type Options = {
+  showHidden?: boolean;
   onPathRenamed?: (from: string, to: string) => void;
   onPathDeleted?: (path: string) => void;
 };
 
 export function useFileTree(rootPath: string | null, options?: Options) {
+  const showHidden = options?.showHidden ?? false;
   const [nodes, setNodes] = useState<TreeState>({});
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [pendingCreate, setPendingCreate] = useState<PendingCreate | null>(
@@ -45,10 +47,19 @@ export function useFileTree(rootPath: string | null, options?: Options) {
   );
   const [renaming, setRenaming] = useState<string | null>(null);
 
+  const expandedRef = useRef(expanded);
+  const rootPathRef = useRef(rootPath);
+  const prevShowHiddenRef = useRef<boolean | null>(null);
+  expandedRef.current = expanded;
+  rootPathRef.current = rootPath;
+
   const fetchChildren = useCallback(async (path: string) => {
     setNodes((s) => ({ ...s, [path]: { status: "loading" } }));
     try {
-      const entries = await invoke<DirEntry[]>("fs_read_dir", { path });
+      const entries = await invoke<DirEntry[]>("fs_read_dir", {
+        path,
+        showHidden,
+      });
       setNodes((s) => ({ ...s, [path]: { status: "loaded", entries } }));
     } catch (e) {
       setNodes((s) => ({
@@ -56,7 +67,24 @@ export function useFileTree(rootPath: string | null, options?: Options) {
         [path]: { status: "error", message: String(e) },
       }));
     }
-  }, []);
+  }, [showHidden]);
+
+  // Re-list open folders when toggling hidden files (keep expand state).
+  useEffect(() => {
+    if (prevShowHiddenRef.current === null) {
+      prevShowHiddenRef.current = showHidden;
+      return;
+    }
+    if (prevShowHiddenRef.current === showHidden) return;
+    prevShowHiddenRef.current = showHidden;
+
+    const rp = rootPathRef.current;
+    if (!rp) return;
+    const ex = expandedRef.current;
+    const paths = [rp, ...[...ex].filter((p) => p !== rp)];
+    paths.sort((a, b) => a.split("/").length - b.split("/").length);
+    for (const p of paths) void fetchChildren(p);
+  }, [showHidden, fetchChildren]);
 
   // Root change → reset state.
   useEffect(() => {
